@@ -3,7 +3,7 @@ from faiss_index import IndexBuilder
 import pandas as pd
 import numpy as np
 from time import time
-
+import csv
 
 class SearchEngine(object):
     def __init__(self, use_pretrained=False):
@@ -11,9 +11,8 @@ class SearchEngine(object):
         self.faiss_index_obj = IndexBuilder()
         self.use_pretrained = use_pretrained
         self.search_df = pd.read_csv(
-            "MovieSummaries/plot_summaries.txt", sep="\t", header=None
+            "MovieSummaries/movie_dataset.csv"
         )
-        self.search_df.columns = ["index", "plot"]
         if self.use_pretrained:
             self.faiss_index_pretrained = self.faiss_index_obj.read_index()
 
@@ -33,20 +32,23 @@ class SearchEngine(object):
 
         top_k_ids = top_k[1].tolist()[0]
         top_k_ids = list(np.unique(top_k_ids))
-        results = [self.search_df["plot"].iloc[idx] for idx in top_k_ids]
+        results = [self.search_df["title"].iloc[idx] for idx in top_k_ids]
         end = time()
         print(f"{end-start} seconds for search")
+        with open('query_results.txt','w') as file:
+            for result in results:
+                file.write(result)
+                file.write('\n')
         return results
 
 
 if __name__ == "__main__":
-    df = pd.read_csv("MovieSummaries/plot_summaries.txt", sep="\t", header=None)
-    df.columns = ["id", "plots"]
-    df = df.sample(n=5000)
+    import faiss
+
+    index = faiss.read_index("faiss_indices/search_index.index")
+    df = pd.read_csv("MovieSummaries/movie_dataset.csv")
+
     SE = SearchEngine()
-    SE.fit(X=list(df["plots"]))
-    results = SE.search(query="A scary movie")
-    print()
-    for result in results:
-        print(result)
-        print("\n")
+    SE.fit(X=list(df["composite_doc"]))
+    SE.search(query='Peter Parker')
+
